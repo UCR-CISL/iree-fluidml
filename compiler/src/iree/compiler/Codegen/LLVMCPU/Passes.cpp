@@ -310,7 +310,9 @@ LogicalResult verifyConvTileAndDecomposeExpertConfig(
 void buildLLVMCPUVectorLoweringPipeline(
     OpPassManager &funcPassManager,
     const LLVMCPUVectorLoweringPassOptions &options) {
-  funcPassManager.addPass(createDropVectorUnitDimsPass());
+  // FluidML(Jinjie Liu): This pass introduces some potential bugs (or
+  // features?), so disable it.
+  // funcPassManager.addPass(createDropVectorUnitDimsPass());
   funcPassManager.addPass(createLLVMCPUVirtualVectorLoweringPass(
       LLVMCPUVirtualVectorLoweringPassOptions{options.splitVectorTransfersTo,
                                               options.enableArmI8mm}));
