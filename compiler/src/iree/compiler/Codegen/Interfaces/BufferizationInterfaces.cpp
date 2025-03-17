@@ -120,32 +120,26 @@ findOrCreateSubspanBuffer(RewriterBase &rewriter,
     // FluidML(Jinjie Liu): Don't add stride for unranked tensors like
     // `tensor<f32>`.
     std::optional<ArrayRef<int64_t>> axesOrderOpt = std::nullopt;
-    if (auto funcOp = subspanOp->getParentOfType<func::FuncOp>()) {
+    if (auto attr = subspanOp->getAttrOfType<mlir::DenseI64ArrayAttr>(
+            "fluidml.layout")) {
       // FluidML(Jinjie Liu): The attribute describing the axis is stored in the
-      // format of `fluidml.arg${axis}axis`.
-      SmallString<16> opAxisKey("fluidml.arg");
-      subspanOp.getBinding().toStringUnsigned(opAxisKey, 10);
-      opAxisKey.append("axes");
-      if (auto axesAttr =
-              funcOp->getAttrOfType<mlir::DenseI64ArrayAttr>(opAxisKey)) {
-        ArrayRef<int64_t> axesOrderRef = axesAttr.asArrayRef();
+      // format of `fluidml.layout`.
+      ArrayRef<int64_t> axesOrderRef = attr.asArrayRef();
 #ifndef NDEBUG
-        DenseSet<int64_t> axesSet;
-        const size_t rank = shapedType.getRank();
-        assert(
-            axesOrderRef.size() == rank &&
-            "The axes in the attribute should have the same size as the rank.");
-        for (int64_t axis : axesOrderRef) {
-          assert(
-              axis >= 0 && axis < rank &&
-              "The axis in the attribute should be in the range of [0, rank)");
-          axesSet.insert(axis);
-        }
-        assert(axesSet.size() == rank &&
-               "The axes in the attribute should be unique.");
-#endif
-        axesOrderOpt = axesOrderRef;
+      DenseSet<int64_t> axesSet;
+      const size_t rank = shapedType.getRank();
+      assert(
+          axesOrderRef.size() == rank &&
+          "The axes in the attribute should have the same size as the rank.");
+      for (int64_t axis : axesOrderRef) {
+        assert(axis >= 0 && axis < rank &&
+               "The axis in the attribute should be in the range of [0, rank)");
+        axesSet.insert(axis);
       }
+      assert(axesSet.size() == rank &&
+             "The axes in the attribute should be unique.");
+#endif
+      axesOrderOpt = axesOrderRef;
     }
     OpFoldResult elementOffset = convertByteOffsetToElementOffset(
         rewriter, subspanOp->getLoc(), byteOffset,

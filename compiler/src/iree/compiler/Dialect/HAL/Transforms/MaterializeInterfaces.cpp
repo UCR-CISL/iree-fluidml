@@ -306,6 +306,14 @@ convertBindingUsage(mlir::FunctionOpInterface sourceFuncOp, BlockArgument arg,
         oldOp.getLoc(), oldOp.getType(), pipelineLayoutAttr,
         APInt(64, bindingOrdinal), oldOp.getByteOffset(),
         oldOp.getDynamicDims(), alignmentAttr, bindingAttr.getFlags());
+    // FluidML(Jinjie Liu): Pass layout from the stream.binding.subspan op to
+    // the hal.interface.binding.subspan op.
+    for (auto attr : oldOp->getAttrs()) {
+      StringAttr name = attr.getName();
+      if (name.getValue().starts_with("fluidml.")) {
+        newOp->setAttr(attr.getName(), attr.getValue());
+      }
+    }
     oldOp.replaceAllUsesWith(newOp.getResult());
     oldOp.erase();
   }

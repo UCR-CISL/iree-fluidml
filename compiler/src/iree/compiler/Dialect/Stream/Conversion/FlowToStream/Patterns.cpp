@@ -11,7 +11,9 @@
 #include "iree/compiler/Dialect/Stream/Conversion/PatternUtils.h"
 #include "iree/compiler/Dialect/Stream/IR/StreamDialect.h"
 #include "iree/compiler/Dialect/Stream/IR/StreamOps.h"
+#include "llvm/Support/FormatVariadic.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/IRMapping.h"
@@ -998,6 +1000,15 @@ static bool insertBindingOp(BlockArgument arg,
 
   auto subspanOp = builder.create<IREE::Stream::BindingSubspanOp>(
       arg.getLoc(), tensorType, arg, zero, dynamicDims);
+  // FluidML(Jinjie Liu): Check if the argument has a layout attribute and if so
+  // set it on the subspan op.
+  uint32_t idx = arg.getArgNumber();
+  llvm::SmallString<10> key = llvm::formatv("fluidml.{}", idx);
+  auto funcOp = cast<func::FuncOp>(arg.getOwner()->getParentOp());
+  if (auto attr = funcOp->getAttr(key)) {
+    subspanOp->setAttr("fluidml.layout", attr);
+    funcOp->removeAttr(key);
+  }
   arg.replaceAllUsesExcept(subspanOp.getResult(), subspanOp);
 
   // If we needed to insert at a special point restore back to the original

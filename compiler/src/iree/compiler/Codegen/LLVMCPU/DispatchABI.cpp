@@ -830,12 +830,16 @@ MemRefDescriptor HALDispatchABI::loadBinding(Operation *forOp, int64_t ordinal,
     // following index linearization:
     //   x[i, j, k] = i * x.dim[1] * x.dim[2] + j * x.dim[2] + k
     if (!strides.empty()) {
-      assert(strides.back() == 1 &&
-             "unexpected non-unit stride for innermost dimension");
-      desc.setConstantStride(builder, loc, rank - 1, 1);
+      // FluidML(Jinjie Liu): We need to disable this assertion because the
+      // FluidML doesn't follow the row-major order. Potential problems could be
+      // here.
+
+      // assert(strides.back() == 1 &&
+      //        "unexpected non-unit stride for innermost dimension");
       OpFoldResult currentStride = builder.getIndexAttr(1);
       for (int i = rank - 1; i > 0; --i) {
         if (ShapedType::isDynamic(strides[i - 1])) {
+          desc.setConstantStride(builder, loc, rank - 1, 1);
           auto dim = desc.size(builder, loc, i);
           Value currentStrideVal;
           if (std::optional<int64_t> currentStrideInt =
@@ -850,6 +854,9 @@ MemRefDescriptor HALDispatchABI::loadBinding(Operation *forOp, int64_t ordinal,
                   .getResult();
           desc.setStride(builder, loc, i - 1, currentStride.get<Value>());
         } else {
+          if (i == rank - 1) {
+            desc.setConstantStride(builder, loc, i, strides[i]);
+          }
           currentStride = builder.getIndexAttr(strides[i - 1]);
           desc.setConstantStride(builder, loc, i - 1, strides[i - 1]);
         }
