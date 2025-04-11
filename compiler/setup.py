@@ -248,6 +248,12 @@ def prepare_installation():
     if not IS_CONFIGURED:
         # Build from source tree.
         subprocess.check_call(["cmake", "--version"])
+        try:
+            subprocess.check_call(["nvidia-smi"])
+        except (subprocess.SubprocessError, FileNotFoundError):
+            has_cuda: bool = False
+        else:
+            has_cuda: bool = True
         os.makedirs(IREE_BINARY_DIR, exist_ok=True)
         maybe_nuke_cmake_cache()
         print(f"CMake build dir: {IREE_BINARY_DIR}", file=sys.stderr)
@@ -266,7 +272,10 @@ def prepare_installation():
             # TODO(scotttodd): include IREE_TARGET_BACKEND_WEBGPU_SPIRV here (and in env)
             get_env_cmake_option("IREE_ENABLE_CPUINFO", "ON"),
             get_env_cmake_option("IREE_TARGET_BACKEND_ROCM", "OFF"),
-            get_env_cmake_option("IREE_TARGET_BACKEND_CUDA", "ON"),
+            get_env_cmake_option(
+                "IREE_TARGET_BACKEND_CUDA",
+                "ON" if has_cuda else "OFF",
+            ),
             get_env_cmake_option("IREE_ENABLE_LLD", "ON"),
         ]
         cmake_args.extend(get_cmake_version_info_args())

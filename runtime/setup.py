@@ -268,6 +268,12 @@ def build_configuration(cmake_build_dir, cmake_install_dir, extra_cmake_args=())
     maybe_nuke_cmake_cache(cmake_build_dir, cmake_install_dir)
     print(f"CMake build dir: {cmake_build_dir}", file=sys.stderr)
     print(f"CMake install dir: {cmake_install_dir}", file=sys.stderr)
+    try:
+        subprocess.check_call(["nvidia-smi"])
+    except (subprocess.SubprocessError, FileNotFoundError):
+        has_cuda: bool = False
+    else:
+        has_cuda: bool = True
     cmake_args = [
         "-GNinja",
         "--log-level=VERBOSE",
@@ -284,7 +290,7 @@ def build_configuration(cmake_build_dir, cmake_install_dir, extra_cmake_args=())
         ),
         get_env_cmake_option(
             "IREE_HAL_DRIVER_CUDA",
-            "ON",
+            "ON" if has_cuda else "OFF",
         ),
         get_env_cmake_option(
             "IREE_HAL_DRIVER_HIP",
